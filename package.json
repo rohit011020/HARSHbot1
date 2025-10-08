@@ -305,4 +305,5 @@ async function handleNicknameChange(api, event) {
         await api.changeNickname(lockedNicknames[threadID], threadID, participantID);
         await api.sendMessage(`Nicknames are locked! Only admin can change them. @${authorID}`, threadID);
     }
+
 }
