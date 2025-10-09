@@ -1,5 +1,5 @@
 {
-  "name": "waleed-bot",
+  "shivam": "waleed-bot",
   "version": "1.0.0",
   "description": "Facebook Bot by Waleed",
   "main": "main.py",
@@ -16,3 +16,4 @@
   }
 
 }
+
