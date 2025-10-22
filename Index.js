@@ -1,64 +1,60 @@
-const login = require("ws3-fca");
-const fs = require("fs");
-const express = require("express");
+import discord
+from discord.ext import commands
 
-// ✅ Load AppState
-let appState;
-try {
-  appState = JSON.parse(fs.readFileSync("appstate.json", "utf-8"));
-} catch (err) {
-  console.error("❌ Error reading appstate.json:", err);
-  process.exit(1);
-}
+intents = discord.Intents.default()
+intents.members = True  # Required to manage nicknames
 
-// ✅ Group Info
-const GROUP_THREAD_ID = "61565511420243";
-const LOCKED_GROUP_NAME = "🤪 EXIT FUNNY KIDX + RITIK BOKA CHUDKE DAFAN 😂";
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-// ✅ Express Server to keep bot alive (for Render or UptimeRobot)
-const app = express();
-const PORT = process.env.PORT || 3000;
-app.get("/", (req, res) => res.send("🤖 Group Name Locker Bot is alive!"));
-app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
+# Replace with the role IDs or permission checks for admins
+ADMIN_ROLE_NAME = "Admin"
 
-// ✅ Function to start locking loop
-function startGroupNameLocker(api) {
-  const lockLoop = () => {
-    api.getThreadInfo(GROUP_THREAD_ID, (err, info) => {
-      if (err) {
-        console.error("❌ Error fetching group info:", err);
-      } else {
-        if (info.name !== LOCKED_GROUP_NAME) {
-          console.warn(`⚠️ Group name changed to "${info.name}" → resetting in 10s...`);
-          setTimeout(() => {
-            api.setTitle(LOCKED_GROUP_NAME, GROUP_THREAD_ID, (err) => {
-              if (err) {
-                console.error("❌ Failed to reset group name:", err);
-              } else {
-                console.log("🔒 Group name reset successfully.");
-              }
-            });
-          }, 10000); // 10 sec delay before reset
-        } else {
-          console.log("✅ Group name is correct.");
-        }
-      }
+# Lock for group (server) name changes
+server_name_locked = True
+# Lock for nicknames
+nickname_locked = True
 
-      // 🔁 Schedule next check after 5 seconds
-      setTimeout(lockLoop, 1000);
-    });
-  };
+@bot.event
+async def on_guild_update(before, after):
+    if server_name_locked and before.name != after.name:
+        await after.edit(name=before.name)
+        print(f"Server name change detected and reverted to: {before.name}")
 
-  lockLoop(); // Start loop
-}
+@bot.event
+async def on_member_update(before, after):
+    if nickname_locked and before.nick != after.nick:
+        # Only revert if user is not admin
+        role_names = [role.name for role in after.roles]
+        if ADMIN_ROLE_NAME not in role_names:
+            await after.edit(nick=before.nick)
+            print(f"Nickname change reverted for {after.name}")
 
-// 🟢 Facebook Login
-login({ appState }, (err, api) => {
-  if (err) {
-    console.error("❌ Login Failed:", err);
-    return;
-  }
+@bot.command()
+@commands.has_role(ADMIN_ROLE_NAME)
+async def lock_server(ctx):
+    global server_name_locked
+    server_name_locked = True
+    await ctx.send("Server name lock enabled.")
 
-  console.log("✅ Logged in successfully. Group name locker activated.");
-  startGroupNameLocker(api);
-});
+@bot.command()
+@commands.has_role(ADMIN_ROLE_NAME)
+async def unlock_server(ctx):
+    global server_name_locked
+    server_name_locked = False
+    await ctx.send("Server name lock disabled.")
+
+@bot.command()
+@commands.has_role(ADMIN_ROLE_NAME)
+async def lock_nick(ctx):
+    global nickname_locked
+    nickname_locked = True
+    await ctx.send("Nickname lock enabled.")
+
+@bot.command()
+@commands.has_role(ADMIN_ROLE_NAME)
+async def unlock_nick(ctx):
+    global nickname_locked
+    nickname_locked = False
+    await ctx.send("Nickname lock disabled.")
+
+bot.run("YOUR_BOT_TOKEN")
